@@ -28,6 +28,8 @@ import {
   HighestMigrationId,
   ReorderAction,
   ReorderableContainers,
+  ResponseMode,
+  ResponseRule,
   Route,
   RouteDefault,
   RouteResponse,
@@ -64,7 +66,8 @@ import {
 import { FocusableInputs } from 'src/renderer/app/enums/ui.enum';
 import {
   HumanizeText,
-  environmentHasRoute
+  environmentHasRoute,
+  responseHasRules
 } from 'src/renderer/app/libs/utils.lib';
 import {
   CallbackResponseUsage,
@@ -2018,6 +2021,10 @@ export class EnvironmentsService {
       // otherwise interpreted as regex groups by path-to-regexp
       endpoint = endpoint.replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 
+      const rules: ResponseRule[] = log.response
+        ? this.parseQueryParamsArrayToRules(log.request.queryParams)
+        : [];
+
       // check if route already exists
       if (
         !force &&
@@ -2027,48 +2034,46 @@ export class EnvironmentsService {
           type: routeType
         })
       ) {
+        // Case 1 : Route exists but not response
+        const route = targetEnvironment.routes.find(
+          (RouteFound) =>
+            RouteFound.endpoint === endpoint && RouteFound.method === log.method
+        );
+
+        routeResponse = this.createResponse(log, rules);
+
+        if (
+          // route &&
+          !route.responses.some((RouteResponseFound) =>
+            responseHasRules(RouteResponseFound, routeResponse.rules)
+          ) &&
+          route &&
+          log.proxied
+        ) {
+          // Il n'y a aucune des réponses qui correspond à routeResponse
+          route.responses.push(routeResponse);
+          this.store.update(removeRouteAction(environmentUuid, route.uuid));
+          this.store.update(
+            addRouteAction(environmentUuid, route, 'root', force)
+          );
+        } else if (route && log.proxied) {
+          // eslint-disable-next-line no-console
+          console.log('WTF ?! Pourquoi je suis là ??', log);
+        }
+
         return;
       }
 
-      if (log.response) {
-        const headers: Header[] = [];
-        log.response.headers.forEach((header) => {
-          if (
-            [
-              'content-encoding',
-              'transfer-encoding',
-              'content-length'
-            ].includes(header.key)
-          ) {
-            return;
-          }
-
-          headers.push(BuildHeader(header.key, header.value));
-        });
-
-        if (log.response.body) {
-          headers.push(
-            BuildHeader('content-length', log.response.body.length.toString())
-          );
-        }
-
-        routeResponse = {
-          ...BuildRouteResponse(),
-          headers,
-          statusCode: log.response.status,
-          body: log.response.body
-        };
-      } else {
-        routeResponse = BuildRouteResponse();
-      }
-
+      routeResponse = this.createResponse(log, rules);
+      // Case 2 : Route doesn't exists
       const newRoute: Route = {
         ...(routeType === RouteType.WS
           ? BuildWebSocketRoute()
           : BuildHTTPRoute()),
         method: log.method,
         endpoint,
-        responses: [routeResponse]
+        responses: [routeResponse],
+        responseMode: ResponseMode.FALLBACK
       };
 
       this.store.update(
@@ -2362,5 +2367,58 @@ export class EnvironmentsService {
    */
   private validateEnvironment(environment: Environment) {
     return this.dataService.migrateAndValidateEnvironment(environment);
+  }
+
+  private parseQueryParamsArrayToRules(
+    queryParamsArray: { name: string; value: string }[]
+  ): ResponseRule[] {
+    return queryParamsArray.map(({ name, value }) => ({
+      target: 'query',
+      modifier: name,
+      value:
+        name.includes('date_to') || name.includes('date_from') ? 'null' : value,
+      invert: name.includes('date_to') || name.includes('date_from'),
+      operator:
+        name.includes('date_to') || name.includes('date_from')
+          ? 'null'
+          : 'equals'
+    }));
+  }
+
+  private createResponse(log: EnvironmentLog, rules: ResponseRule[]) {
+    if (log.response) {
+      const headers: Header[] = [];
+      log.response.headers.forEach((header) => {
+        if (
+          ['content-encoding', 'transfer-encoding', 'content-length'].includes(
+            header.key
+          )
+        ) {
+          return;
+        }
+
+        headers.push(BuildHeader(header.key, header.value));
+      });
+
+      if (log.response.body) {
+        headers.push(
+          BuildHeader('content-length', log.response.body.length.toString())
+        );
+      }
+
+      const routeresponse: RouteResponse = {
+        ...BuildRouteResponse(),
+        headers,
+        statusCode: log.response.status,
+        body: log.response.body,
+        rules: rules,
+        fallbackTo404: true,
+        rulesOperator: 'AND'
+      };
+
+      return routeresponse;
+    } else {
+      return BuildRouteResponse();
+    }
   }
 }

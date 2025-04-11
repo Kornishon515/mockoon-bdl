@@ -2,7 +2,9 @@ import { DeployInstance } from '@mockoon/cloud';
 import {
   Environment,
   ParsedJSONBodyMimeTypes,
+  ResponseRule,
   Route,
+  RouteResponse,
   RouteType,
   stringIncludesArrayItems
 } from '@mockoon/commons';
@@ -101,20 +103,11 @@ export const buildApiUrl = (
   activeEnvironment: Environment,
   instance?: DeployInstance
 ) => {
-  let webUrl = instance?.url
-    ? instance.url
-    : `{subdomain}.mockoon.app${env.production ? '' : 'dev:5003'}`;
-
-  // we do not display the protocol in the UI
-  if (!env.production) {
-    webUrl = webUrl.replace('http://', '');
-  } else {
-    webUrl = webUrl.replace('https://', '');
-  }
+  const subdomain = instance?.subdomain ? instance.subdomain : '{subdomain}';
 
   return `${
     Config.isWeb
-      ? webUrl
+      ? `${subdomain}.mockoon.app${env.production ? '' : 'dev:5003'}`
       : activeEnvironment?.hostname || `localhost:${activeEnvironment?.port}`
   }`;
 };
@@ -217,3 +210,43 @@ export type DeepPartial<T> = T extends object
       [P in keyof T]?: DeepPartial<T[P]>;
     }
   : T;
+
+const serializeRule = (rule: ResponseRule): string =>
+  JSON.stringify({
+    target: rule.target,
+    modifier: rule.modifier,
+    value: rule.value,
+    invert: rule.invert,
+    operator: rule.operator
+  });
+
+const getRuleFrequencyMap = (rules: ResponseRule[]): Record<string, number> => {
+  return rules.reduce(
+    (map, rule) => {
+      const key = serializeRule(rule);
+      map[key] = (map[key] || 0) + 1;
+
+      return map;
+    },
+    {} as Record<string, number>
+  );
+};
+
+export const responseHasRules = (
+  response: RouteResponse,
+  rules: ResponseRule[]
+): boolean => {
+  const responseMap = getRuleFrequencyMap(response.rules);
+  const targetMap = getRuleFrequencyMap(rules);
+
+  const allKeys = new Set([
+    ...Object.keys(responseMap),
+    ...Object.keys(targetMap)
+  ]);
+
+  for (const key of allKeys) {
+    if (responseMap[key] !== targetMap[key]) return false;
+  }
+
+  return true;
+};
