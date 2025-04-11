@@ -79,9 +79,9 @@ export class ResponseRulesInterpreter {
       return defaultResponse;
     } else {
       let response = this.routeResponses.find((routeResponse) => {
-        if (routeResponse.rules.length === 0) {
-          return false;
-        }
+        // if (routeResponse.rules.length === 0) {
+        //   return false;
+        // }
 
         return routeResponse.rulesOperator === 'AND'
           ? routeResponse.rules.every((rule) =>
