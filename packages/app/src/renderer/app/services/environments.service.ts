@@ -2029,7 +2029,7 @@ export class EnvironmentsService {
       if (
         !force &&
         environmentHasRoute(targetEnvironment, {
-          endpoint,
+          endpoint: log.route.slice(1),
           method: log.method,
           type: routeType
         })
