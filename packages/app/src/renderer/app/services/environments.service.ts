@@ -2021,22 +2021,33 @@ export class EnvironmentsService {
       // otherwise interpreted as regex groups by path-to-regexp
       endpoint = endpoint.replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 
+      // Parsing response rules if they exist
       const rules: ResponseRule[] = log.response
         ? this.parseQueryParamsArrayToRules(log.request.queryParams)
         : [];
 
+      // Simplify route existence check
+      const routeExists = (route: string) =>
+        environmentHasRoute(targetEnvironment, {
+          endpoint: route.slice(1),
+          method: log.method,
+          type: routeType
+        });
+
       // Case 1 : check if route already exists
       if (
         !force &&
-        environmentHasRoute(targetEnvironment, {
-          endpoint: log.route.slice(1),
-          method: log.method,
-          type: routeType
-        })
+        (log.route ? routeExists(log.route) : routeExists('/' + endpoint))
       ) {
+        if (!log.route) {
+          log.route = '/' + endpoint;
+        }
+
+        // Find the matching route in the environment
         const route = targetEnvironment.routes.find(
           (RouteFound) =>
-            RouteFound.endpoint === endpoint && RouteFound.method === log.method
+            RouteFound.endpoint === log.route.slice(1) &&
+            RouteFound.method === log.method
         );
 
         routeResponse = this.createResponse(log, rules);
