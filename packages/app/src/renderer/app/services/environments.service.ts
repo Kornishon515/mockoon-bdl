@@ -2043,7 +2043,6 @@ export class EnvironmentsService {
         routeResponse = this.createResponse(log, rules);
 
         if (
-          // route &&
           !route.responses.some((RouteResponseFound) =>
             responseHasRules(RouteResponseFound, routeResponse.rules)
           ) &&
