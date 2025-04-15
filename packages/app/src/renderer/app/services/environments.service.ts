@@ -2025,7 +2025,7 @@ export class EnvironmentsService {
         ? this.parseQueryParamsArrayToRules(log.request.queryParams)
         : [];
 
-      // check if route already exists
+      // Case 1 : check if route already exists
       if (
         !force &&
         environmentHasRoute(targetEnvironment, {
@@ -2034,7 +2034,6 @@ export class EnvironmentsService {
           type: routeType
         })
       ) {
-        // Case 1 : Route exists but not response
         const route = targetEnvironment.routes.find(
           (RouteFound) =>
             RouteFound.endpoint === endpoint && RouteFound.method === log.method
@@ -2042,15 +2041,21 @@ export class EnvironmentsService {
 
         routeResponse = this.createResponse(log, rules);
 
+        // Case 1.1 : Route exists but not response
         if (
+          route &&
           !route.responses.some((RouteResponseFound) =>
             responseHasRules(RouteResponseFound, routeResponse.rules)
           ) &&
-          route &&
           log.proxied
         ) {
-          // Il n'y a aucune des réponses qui correspond à routeResponse
-          route.responses.push(routeResponse);
+          if (rules.length !== 0) {
+            route.responses.unshift(routeResponse);
+          } else {
+            route.responses.push(routeResponse); // The default response must be at the end
+            route.responseMode = null;
+          }
+
           this.store.update(removeRouteAction(environmentUuid, route.uuid));
           this.store.update(
             addRouteAction(environmentUuid, route, 'root', force)
@@ -2072,7 +2077,7 @@ export class EnvironmentsService {
         method: log.method,
         endpoint,
         responses: [routeResponse],
-        responseMode: ResponseMode.FALLBACK
+        responseMode: rules.length !== 0 ? ResponseMode.FALLBACK : null
       };
 
       this.store.update(
@@ -2411,7 +2416,8 @@ export class EnvironmentsService {
         statusCode: log.response.status,
         body: log.response.body,
         rules: rules,
-        fallbackTo404: true,
+        fallbackTo404: rules.length !== 0,
+        default: rules.length !== 0, // It takes the first one and can't create multiple times a response so this is enough
         rulesOperator: 'AND'
       };
 
