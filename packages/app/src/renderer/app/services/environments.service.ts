@@ -2021,10 +2021,20 @@ export class EnvironmentsService {
       // otherwise interpreted as regex groups by path-to-regexp
       endpoint = endpoint.replace(/\(/g, '\\(').replace(/\)/g, '\\)');
 
+      // Log.params seems fucked so I'm doing it myself
+      if (log.route && log.route !== log.url) {
+        log.request.params = this.extractRouteParams(log.route, log.url);
+      }
+
       // Parsing response rules if they exist
-      const rules: ResponseRule[] = log.response
-        ? this.parseQueryParamsArrayToRules(log.request.queryParams)
-        : [];
+      const rules: ResponseRule[] = [
+        ...(log.response
+          ? this.parseParamsArrayToRules(log.request.queryParams, 'query')
+          : []),
+        ...(log.request.params.length > 0
+          ? this.parseParamsArrayToRules(log.request.params, 'params')
+          : [])
+      ];
 
       // Simplify route existence check
       const routeExists = (route: string) =>
@@ -2384,20 +2394,22 @@ export class EnvironmentsService {
     return this.dataService.migrateAndValidateEnvironment(environment);
   }
 
-  private parseQueryParamsArrayToRules(
-    queryParamsArray: { name: string; value: string }[]
+  private parseParamsArrayToRules(
+    paramsArray: { name: string; value: string }[],
+    target: 'query' | 'params'
   ): ResponseRule[] {
-    return queryParamsArray.map(({ name, value }) => ({
-      target: 'query',
-      modifier: name,
-      value:
-        name.includes('date_to') || name.includes('date_from') ? 'null' : value,
-      invert: name.includes('date_to') || name.includes('date_from'),
-      operator:
-        name.includes('date_to') || name.includes('date_from')
-          ? 'null'
-          : 'equals'
-    }));
+    return paramsArray.map(({ name, value }) => {
+      const isDateFilter =
+        name.includes('date_to') || name.includes('date_from');
+
+      return {
+        target,
+        modifier: name,
+        value: target === 'query' && isDateFilter ? 'null' : value,
+        invert: target === 'query' && isDateFilter,
+        operator: target === 'query' && isDateFilter ? 'null' : 'equals'
+      };
+    });
   }
 
   private createResponse(log: EnvironmentLog, rules: ResponseRule[]) {
@@ -2436,5 +2448,28 @@ export class EnvironmentsService {
     } else {
       return BuildRouteResponse();
     }
+  }
+
+  private extractRouteParams(route, url) {
+    const routeParts = route.split('/');
+    const urlParts = url.split('/');
+
+    if (routeParts.length !== urlParts.length) return [];
+
+    const params = [];
+
+    for (let i = 0; i < routeParts.length; i++) {
+      const routePart = routeParts[i];
+      const urlPart = urlParts[i];
+
+      if (routePart.startsWith(':')) {
+        const paramName = routePart.slice(1);
+        params.push({ name: paramName, value: urlPart });
+      } else if (routePart !== urlPart) {
+        return [];
+      }
+    }
+
+    return params;
   }
 }

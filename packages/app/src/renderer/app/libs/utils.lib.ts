@@ -239,6 +239,8 @@ export const responseHasRules = (
   const responseMap = getRuleFrequencyMap(response.rules);
   const targetMap = getRuleFrequencyMap(rules);
 
+  if (responseMap.length !== targetMap.length) return false;
+
   const allKeys = new Set([
     ...Object.keys(responseMap),
     ...Object.keys(targetMap)
