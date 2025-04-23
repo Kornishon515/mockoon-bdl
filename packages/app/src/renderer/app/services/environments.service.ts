@@ -2411,10 +2411,7 @@ export class EnvironmentsService {
   ): ResponseRule[] {
     return paramsArray.map(({ name, value }) => {
       const isDateFilter =
-        name.includes('date_to') ||
-        name.includes('date_from') ||
-        name.includes('datetime_from') ||
-        name.includes('datetime_to');
+        name.includes('date') && (name.includes('from') || name.includes('to'));
 
       return {
         target,
