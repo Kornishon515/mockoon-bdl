@@ -1112,6 +1112,19 @@ export class EnvironmentsService {
     }
   }
 
+  public updatePrefixFolder(folderId: string) {
+    const activeEnvironment = this.store.getActiveEnvironment();
+    const selectedFolder = activeEnvironment.folders.find(
+      (folder) => folder.uuid === folderId
+    );
+
+    for (const child of selectedFolder.children) {
+      if (child.type === 'route') {
+        this.addPrefix(child.uuid, selectedFolder.name);
+      }
+    }
+  }
+
   /**
    * Update a folder and save it in the store
    */
@@ -1663,6 +1676,50 @@ export class EnvironmentsService {
       }
 
       this.store.update(updateSettingsAction({ disabledRoutes }));
+
+      const environmentsStatus = this.store.get('environmentsStatus');
+      const activeEnvironmentStatus =
+        environmentsStatus[activeEnvironment.uuid];
+
+      if (activeEnvironmentStatus.running) {
+        this.store.update(
+          updateEnvironmentStatusAction(
+            {
+              needRestart: true
+            },
+            activeEnvironment.uuid
+          )
+        );
+      }
+    }
+  }
+
+  public addPrefix(routeUuid: string, prefix: string) {
+    const activeEnvironment = this.store.getActiveEnvironment();
+    const selectedRoute = activeEnvironment.routes.find(
+      (route) => route.uuid === routeUuid
+    );
+
+    if (selectedRoute) {
+      if (
+        selectedRoute.endpoint
+          .toLocaleLowerCase()
+          .startsWith(prefix.toLowerCase())
+      ) {
+        // Remove the prefix
+        this.store.update(
+          updateRouteAction(activeEnvironment.uuid, routeUuid, {
+            endpoint: selectedRoute.endpoint.substring(prefix.length + 1)
+          })
+        );
+      } else {
+        // Add the prefix
+        this.store.update(
+          updateRouteAction(activeEnvironment.uuid, routeUuid, {
+            endpoint: prefix.concat('/', selectedRoute.endpoint)
+          })
+        );
+      }
 
       const environmentsStatus = this.store.get('environmentsStatus');
       const activeEnvironmentStatus =
