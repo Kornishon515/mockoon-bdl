@@ -242,6 +242,14 @@ export class RoutesMenuComponent implements OnInit, OnDestroy {
         this.environmentsService.addFolder(folderUuid);
       }
     },
+    {
+      label: 'Add/Remove prefix',
+      icon: '',
+      twoSteps: false,
+      action: ({ folderUuid }: folderDropdownMenuPayload) => {
+        this.environmentsService.updatePrefixFolder(folderUuid);
+      }
+    },
     ...(this.isWeb
       ? []
       : [
