@@ -1118,6 +1118,10 @@ export class EnvironmentsService {
       (folder) => folder.uuid === folderId
     );
 
+    if (selectedFolder.name === '') {
+      return;
+    }
+
     for (const child of selectedFolder.children) {
       if (child.type === 'route') {
         this.addPrefix(child.uuid, selectedFolder.name);
