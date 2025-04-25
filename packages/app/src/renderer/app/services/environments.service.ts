@@ -1112,6 +1112,10 @@ export class EnvironmentsService {
     }
   }
 
+  /**
+   * Add or remove the folder for all the routes in a folder
+   * @param folderId
+   */
   public updatePrefixFolder(folderId: string) {
     const activeEnvironment = this.store.getActiveEnvironment();
     const selectedFolder = activeEnvironment.folders.find(
@@ -1694,6 +1698,11 @@ export class EnvironmentsService {
     }
   }
 
+  /**
+   * Remove the prefix from the route endpoint if it starts with it else add it at the beginning.
+   * @param routeUuid
+   * @param prefix
+   */
   public addPrefix(routeUuid: string, prefix: string) {
     const activeEnvironment = this.store.getActiveEnvironment();
     const selectedRoute = activeEnvironment.routes.find(
