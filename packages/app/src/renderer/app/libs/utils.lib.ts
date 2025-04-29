@@ -124,6 +124,10 @@ export const buildFullPath = (
   route: Route,
   instance?: DeployInstance
 ) => {
+  if (!environment || !route) {
+    return '';
+  }
+
   let protocol = 'http://';
 
   if (route.type === RouteType.WS) {

@@ -76,7 +76,8 @@ export const storeDefaultState: StoreType = {
     alert: null
   },
   deployInstances: [],
-  processedDatabuckets: {}
+  processedDatabuckets: {},
+  feedback: ''
 };
 
 @Injectable({ providedIn: 'root' })
@@ -489,9 +490,11 @@ export class Store {
       distinctUntilChanged(),
       withLatestFrom(this.select('settings')),
       map(([activeEnvironment, settings]) => {
-        return settings.environments.find(
+        const envDescriptor = settings.environments.find(
           (environment) => environment.uuid === activeEnvironment.uuid
-        ).cloud;
+        );
+
+        return !!envDescriptor?.cloud;
       })
     );
   }
