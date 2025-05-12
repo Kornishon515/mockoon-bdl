@@ -140,7 +140,6 @@ import {
   updateUIStateAction
 } from 'src/renderer/app/stores/actions';
 import { ReducerDirectionType } from 'src/renderer/app/stores/reducer';
-import { findRouteFolderHierarchy } from 'src/renderer/app/stores/reducer-utils';
 import { Store } from 'src/renderer/app/stores/store';
 import { Config } from 'src/renderer/config';
 import { EnvironmentDescriptor } from 'src/shared/models/settings.model';
@@ -2148,19 +2147,11 @@ export class EnvironmentsService {
             route.responseMode = null;
           }
 
-          const folder = findRouteFolderHierarchy(
-            route.uuid,
-            targetEnvironment
-          );
-
-          this.store.update(removeRouteAction(environmentUuid, route.uuid));
           this.store.update(
-            addRouteAction(
-              environmentUuid,
-              route,
-              folder && folder.length > 0 ? folder[0] : 'root',
-              force
-            )
+            updateRouteAction(environmentUuid, route.uuid, {
+              responses: route.responses,
+              responseMode: route.responseMode
+            })
           );
         } else if (route && log.proxied) {
           // eslint-disable-next-line no-console
