@@ -2514,6 +2514,9 @@ export class EnvironmentsService {
         );
       }
 
+      const matchingRule = rules.find((rule) => rule.target === 'params');
+      const label = matchingRule ? `Parameter : ${matchingRule.value}` : '';
+
       const routeresponse: RouteResponse = {
         ...BuildRouteResponse(),
         headers,
@@ -2522,7 +2525,8 @@ export class EnvironmentsService {
         rules: rules,
         fallbackTo404: rules.length !== 0,
         default: rules.length !== 0, // It takes the first one and can't create multiple times a response so this is enough
-        rulesOperator: 'AND'
+        rulesOperator: 'AND',
+        label: label
       };
 
       return routeresponse;
