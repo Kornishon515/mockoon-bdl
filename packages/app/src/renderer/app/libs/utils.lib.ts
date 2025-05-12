@@ -215,6 +215,13 @@ export type DeepPartial<T> = T extends object
     }
   : T;
 
+/**
+ * Serialize a rule object into a unique string representation.
+ * Useful for comparing or mapping rules based on their content.
+ *
+ * @param rule - The rule to serialize.
+ * @returns A stringified version of the rule with its key properties.
+ */
 const serializeRule = (rule: ResponseRule): string =>
   JSON.stringify({
     target: rule.target,
@@ -224,6 +231,14 @@ const serializeRule = (rule: ResponseRule): string =>
     operator: rule.operator
   });
 
+/**
+ * Generates a frequency map of serialized rules.
+ * Each unique rule (based on serialized content) becomes a key in the map,
+ * with the number of times it appears as the value.
+ *
+ * @param rules - An array of response rules to analyze.
+ * @returns A record object mapping serialized rules to their frequency count.
+ */
 const getRuleFrequencyMap = (rules: ResponseRule[]): Record<string, number> => {
   return rules.reduce(
     (map, rule) => {
@@ -236,6 +251,14 @@ const getRuleFrequencyMap = (rules: ResponseRule[]): Record<string, number> => {
   );
 };
 
+/**
+ * Checks if a given route response contains the exact same set of rules as the provided list.
+ * /!\ This is a strict comparison: both the rules and their counts must match exactly.
+ *
+ * @param response - The route response object to check.
+ * @param rules - An array of rules to compare against the response's rules.
+ * @returns True if the rules in the response exactly match the given rules, false otherwise.
+ */
 export const responseHasRules = (
   response: RouteResponse,
   rules: ResponseRule[]
